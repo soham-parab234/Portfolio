@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alex Stone - Computer Engineering Student</title>
+  <meta name="description" content="Schematic: an interactive animated portfolio for a computer engineering student: projects, skills, achievements and education." />
+  <link rel="icon" id="siteFavicon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230F86A1'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23EBC7B5'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ================= ADAPTIVE LOADING SCREEN ================= -->
+  <div id="loadingScreen" class="loading-screen" aria-live="polite">
+    <div class="loader-backdrop" aria-hidden="true">
+      <div class="loader-orb loader-orb-1"></div>
+      <div class="loader-orb loader-orb-2"></div>
+    </div>
+    <div class="loader-content">
+      <div class="loader-badge" id="loaderBadge">
+        <span class="loader-badge-inner" id="loaderBadgeInner"></span>
+      </div>
+      <h2 class="loader-title" id="loaderTitle">Alex Stone</h2>
+      <p class="loader-sub mono" id="loaderSub">Computer Engineering Student</p>
+      <div class="loader-bar-wrap">
+        <div class="loader-bar" id="loaderBar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- fixed 3D / backdrop layers -->
+  <video id="wallpaperVideo" class="wallpaper-video" autoplay loop muted playsinline aria-hidden="true"></video>
+  <div class="wallpaper-video-overlay" aria-hidden="true"></div>
+  <div id="scene-root" class="scene-root" aria-hidden="true"></div>
+  <div class="circle-wallpaper" aria-hidden="true">
+    <div class="mesh-orb mesh-orb-1"></div>
+    <div class="mesh-orb mesh-orb-2"></div>
+    <div class="mesh-orb mesh-orb-3"></div>
+    <div class="mesh-orb mesh-orb-4"></div>
+  </div>
+  <div class="paper" aria-hidden="true"></div>
+  <div id="spotlight" class="spotlight" aria-hidden="true"></div>
+  <div id="cursorFX" class="cursor-fx" aria-hidden="true"></div>
+
+  <!-- ================= HEADER ================= -->
+  <header class="topbar">
+    <div class="brand">
+      <button type="button" class="brand-badge" id="brandLogoBtn" aria-label="Site Logo" title="Tap to pop / 5 taps for owner access">
+        <span class="brand-badge-inner" id="brandBadgeInner"></span>
+      </button>
+      <a class="brand-text" href="#top">
+        <span id="hd-name" class="brand-name">Alex Stone</span>
+        <span id="hd-sub" class="brand-sub">Computer Engineering Student</span>
+      </a>
+    </div>
+
+    <nav class="nav-links" id="navLinks">
+      <a href="#about">About</a>
+      <a href="#skills">Skills</a>
+      <a href="#achievements">Achievements</a>
+      <a href="#projects">Projects</a>
+      <a href="#education">Education</a>
+      <a href="#contact">Contact</a>
+    </nav>
+
+    <button class="menu-toggle" id="menuToggle" aria-label="Menu" aria-expanded="false">☰</button>
+  </header>
+
+  <!-- ================= MAIN ================= -->
+  <main id="top">
+
+    <!-- HERO -->
+    <section class="hero" id="hero">
+      <div class="hero-media-backdrop" id="heroMediaBackdrop" aria-hidden="true"></div>
+      <div class="hero-media-overlay" aria-hidden="true"></div>
+      <div class="hero-bg-art" aria-hidden="true">
+        <div class="hero-blur-orb"></div>
+        <div class="hero-blur-orb mod--teal"></div>
+        <svg class="hero-deco-plane" width="84" height="84" viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0.2 36.5L88.9 26.4L50.5 70.3L0.2 36.5Z" fill="#EBC7B5" opacity="0.9"/>
+          <path d="M88.9 26.4L17.2 47.9L25.9 72.4L26.7 54.3L88.9 26.4Z" fill="#EBC7B5"/>
+          <path d="M71.1 34.8L27.2 55.4L26 70.8" stroke="#1B1B1B" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <div class="hero-deco-ring"></div>
+        <div class="hero-deco-dot"></div>
+      </div>
+      <div class="hero-inner">
+        <p class="kicker mono" id="hero-title">Computer Engineering Student</p>
+        <h1 class="hero-name" id="hero-name">Alex Stone</h1>
+        <p class="hero-tagline" id="hero-tagline"></p>
+        <div class="hero-cta">
+          <a href="#projects" class="btn btn-primary" id="hero-cta-primary">See the work</a>
+          <a href="#contact" class="btn btn-ghost" id="hero-cta-secondary">Get in touch</a>
+          <button class="btn btn-ghost" id="resumeBtn">⬇ Download Resume</button>
+        </div>
+        <div class="hero-counts-box">
+          <div class="quick-links" id="quickLinks"></div>
+          <div class="specs" id="hero-specs"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MARQUEE -->
+    <div class="ticker" id="marquee" aria-hidden="true"></div>
+
+    <!-- ABOUT -->
+    <section id="about" class="section" data-sec="about">
+      <div class="wrap">
+        <div class="sec-head">
+          <span class="sec-index mono">01</span>
+          <h2>About</h2>
+          <span class="rule"></span>
+        </div>
+        <div class="about-grid">
+          <div id="avatar-slot" class="about-avatar" data-reveal></div>
+          <div class="about-copy">
+            <div id="about-body" class="about-body"></div>
+            <div id="about-extra" class="about-extra"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SKILLS -->
+    <section id="skills" class="section" data-sec="skills">
+      <div class="wrap">
+        <div class="sec-head">
+          <span class="sec-index mono">02</span>
+          <h2>Skills</h2>
+          <span class="rule"></span>
+        </div>
+        <div id="skills-grid" class="skills-grid"></div>
+      </div>
+    </section>
+
+    <!-- ACHIEVEMENTS -->
+    <section id="achievements" class="section" data-sec="achievements">
+      <div class="wrap">
+        <div class="sec-head">
+          <span class="sec-index mono">03</span>
+          <h2>Achievements</h2>
+          <span class="rule"></span>
+        </div>
+        <div id="achievements-grid" class="achievements-grid"></div>
+      </div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section id="projects" class="section" data-sec="projects">
+      <div class="wrap">
+        <div class="sec-head">
+          <span class="sec-index mono">04</span>
+          <h2>Projects</h2>
+          <span class="rule"></span>
+        </div>
+        <div id="projects-grid" class="projects-grid"></div>
+      </div>
+    </section>
+
+    <!-- EDUCATION -->
+    <section id="education" class="section" data-sec="education">
+      <div class="wrap">
+        <div class="sec-head">
+          <span class="sec-index mono">05</span>
+          <h2>Education</h2>
+          <span class="rule"></span>
+        </div>
+        <div id="edu-list" class="edu-list"></div>
+      </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section id="contact" class="section contact" data-sec="contact">
+      <div class="wrap contact-card">
+        <div class="contact-bg-art" aria-hidden="true">
+          <div class="contact-blur-orb"></div>
+          <div class="contact-deco-ring"></div>
+        </div>
+        <div class="sec-head sec-head--contact">
+          <span class="sec-index mono">06</span>
+          <h2>Let's build something</h2>
+          <span class="rule"></span>
+        </div>
+        <div id="social-links" class="social-links"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="footer" data-sec="footer">
+    <div class="wrap footer-inner">
+      <div class="footer-left" id="f-left"></div>
+      <div class="footer-right">
+        <span class="mono muted" id="f-right"></span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- certificate lightbox -->
+  <div id="lightbox" class="lightbox">
+    <button id="lb-close" class="lb-close" aria-label="Close">✕</button>
+    <img id="lb-img" alt="Certificate" />
+  </div>
+
+  <!-- SECRET OWNER GATE -->
+  <div id="lockOverlay" class="lock-overlay">
+    <div class="lock-card">
+      <button id="lockClose" class="lock-close" aria-label="Close">✕</button>
+      <div class="lock-glyph">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 10V7a4 4 0 0 1 8 0v3M6 10h12v10H6z"/><circle cx="12" cy="15" r="1.6"/></svg>
+      </div>
+      <h3 id="lockHead">Owner Access Only</h3>
+      <p class="lock-sub">This area is for the site owner. Tap top logo 5 times to return.</p>
+      <form id="lockForm" class="lock-form">
+        <div class="pass-wrap">
+          <input id="lockPass" type="password" autocomplete="off" placeholder="Passcode" />
+          <button type="button" class="pass-toggle" id="lockPassToggle" aria-label="Toggle password visibility">
+            <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div id="lockMsg" class="lock-msg"></div>
+        <button type="submit" class="btn btn-primary btn-block">Unlock →</button>
+      </form>
+      <p class="lock-hint mono">Tip: Tap logo 5 times or press Ctrl+Shift+D</p>
+    </div>
+  </div>
+
+  <script src="js/vendor/three.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/palette.js"></script>
+  <script src="js/scene.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
