@@ -173,10 +173,10 @@
     // hero box upper blur layer overlay colors
     const heroEl = document.getElementById("hero");
     if (heroEl && D.owner) {
-      if (D.owner.heroOverlayColor1) heroEl.style.setProperty("--hero-overlay-1", D.owner.heroOverlayColor1);
-      else heroEl.style.removeProperty("--hero-overlay-1");
-      if (D.owner.heroOverlayColor2) heroEl.style.setProperty("--hero-overlay-2", D.owner.heroOverlayColor2);
-      else heroEl.style.removeProperty("--hero-overlay-2");
+      const c1 = D.owner.heroOverlayColor1 || "#0F86A1";
+      const c2 = D.owner.heroOverlayColor2 || "#EBC7B5";
+      heroEl.style.setProperty("--hero-overlay-1", hexA(c1, 0.48));
+      heroEl.style.setProperty("--hero-overlay-2", hexA(c2, 0.40));
     }
   }
 
@@ -329,10 +329,10 @@
     // Hero box background media (image / video)
     const heroEl = document.getElementById("hero");
     if (heroEl) {
-      if (o.heroOverlayColor1) heroEl.style.setProperty("--hero-overlay-1", o.heroOverlayColor1);
-      else heroEl.style.removeProperty("--hero-overlay-1");
-      if (o.heroOverlayColor2) heroEl.style.setProperty("--hero-overlay-2", o.heroOverlayColor2);
-      else heroEl.style.removeProperty("--hero-overlay-2");
+      const c1 = o.heroOverlayColor1 || "#0F86A1";
+      const c2 = o.heroOverlayColor2 || "#EBC7B5";
+      heroEl.style.setProperty("--hero-overlay-1", hexA(c1, 0.48));
+      heroEl.style.setProperty("--hero-overlay-2", hexA(c2, 0.40));
     }
     const mediaWrap = document.getElementById("heroMediaBackdrop");
     if (heroEl && mediaWrap) {

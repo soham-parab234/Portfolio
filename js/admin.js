@@ -79,10 +79,10 @@
     r.setProperty("--accent-glow", hexA(accent, 0.45));
 
     // hero box upper blur layer overlay colors
-    if (o.heroOverlayColor1) r.setProperty("--hero-overlay-1", o.heroOverlayColor1);
-    else r.removeProperty("--hero-overlay-1");
-    if (o.heroOverlayColor2) r.setProperty("--hero-overlay-2", o.heroOverlayColor2);
-    else r.removeProperty("--hero-overlay-2");
+    const h1 = o.heroOverlayColor1 || "#0F86A1";
+    const h2 = o.heroOverlayColor2 || "#EBC7B5";
+    r.setProperty("--hero-overlay-1", hexA(h1, 0.48));
+    r.setProperty("--hero-overlay-2", hexA(h2, 0.40));
 
     // Calculate background luminance to prevent text blending
     const lum = getLuminance(bg);
@@ -348,14 +348,41 @@
     const bind = tokens.join(".");
     return '<textarea data-bind="' + bind + '" rows="' + (rows || 3) + '">' + esc(getPath(tokens)) + "</textarea>";
   }
-  function colorInput(tokens) {
+  /* ---------- color palette component (Image 2 style) ---------- */
+  function colorPaletteInput(tokens, defaultColor, allowReset) {
     const bind = tokens.join(".");
-    return '<span class="color-wrap"><input type="color" data-bind="' + bind + '" value="' + esc(getPath(tokens)) + '"/><code class="color-hex mono">' + esc(getPath(tokens)) + "</code></span>";
+    const cur = getPath(tokens);
+    const hasVal = cur != null && cur !== "";
+    const rawVal = hasVal ? String(cur) : (defaultColor || "");
+    const hex = rawVal.startsWith("#") ? rawVal.toLowerCase() : rawVal;
+    const pickerVal = hex && /^#[0-9a-fA-F]{6}$/.test(hex)
+      ? hex
+      : (defaultColor && /^#[0-9a-fA-F]{6}$/.test(defaultColor) ? defaultColor.toLowerCase() : "#0f86a1");
+    const displayHex = hex || (allowReset ? "inherit" : (defaultColor || "#0f86a1"));
+    const swatchBg = hex ? hex : (defaultColor || "var(--accent)");
+    const isUnset = allowReset && !hasVal ? "1" : "0";
+
+    return '<div class="color-palette-wrap" data-palette-bind="' + bind + '"' + (allowReset ? ' data-allow-reset="1"' : '') + '>' +
+      '<label class="palette-swatch-card" title="Click to open color palette">' +
+        '<span class="palette-swatch-box" style="background:' + esc(swatchBg) + '">' +
+          '<input type="color" class="palette-native-input" data-bind="' + bind + '" data-palette-unset="' + isUnset + '" value="' + esc(pickerVal) + '"/>' +
+        '</span>' +
+        '<span class="palette-hex-code mono">' + esc(displayHex) + '</span>' +
+      '</label>' +
+      (allowReset && hasVal ? '<button type="button" class="palette-reset-btn" data-reset-bind="' + bind + '" title="Reset / inherit color">✕</button>' : '') +
+    '</div>';
   }
-  function hexTextInput(tokens) {
-    const bind = tokens.join(".");
-    return '<input type="text" data-bind="' + bind + '" placeholder="e.g. #5ad1ff (leave empty to inherit)" value="' + esc(getPath(tokens)) + '"/>';
+
+  function colorInput(tokens, defaultColor) {
+    return colorPaletteInput(tokens, defaultColor);
   }
+  function hexTextInput(tokens, defaultColor) {
+    return colorPaletteInput(tokens, defaultColor, true);
+  }
+  function colorPalettePicker(tokens, label, presets, hint) {
+    return colorPaletteInput(tokens, "", true);
+  }
+
   function rangeInput(tokens, min, max) {
     const bind = tokens.join(".");
     return '<span class="range-wrap"><input type="range" min="' + (min || 0) + '" max="' + (max || 100) + '" data-bind="' + bind + '" value="' + esc(getPath(tokens)) + '"/><b class="range-val mono" data-rangefor="' + bind + '">' + esc(getPath(tokens)) + "</b></span>";
@@ -382,54 +409,6 @@
       '<input type="file" class="row-file" data-write="' + bind + '" accept="image/*"/>' +
       '<input type="text" data-bind="' + bind + '" placeholder="' + esc(label || "Image URL") + '" value="' + esc(displayVal) + '" data-is-base64="' + (isBase64 ? "1" : "0") + '"/>' +
       "</div>";
-  }
-
-  /* ---------- color palette picker (reusable visual swatches + native picker) ---------- */
-  function colorPalettePicker(tokens, label, presets, hint) {
-    const bind = tokens.join(".");
-    const curVal = getPath(tokens) || "";
-    const defaultList = presets || [
-      { name: "Default (Theme)", value: "" },
-      { name: "Transparent", value: "transparent" },
-      { name: "Ocean Teal", value: "#0F86A1" },
-      { name: "Amber Peach", value: "#EBC7B5" },
-      { name: "Golden Yellow", value: "#FFE066" },
-      { name: "Midnight Navy", value: "#0B0F19" },
-      { name: "Deep Slate", value: "#1E293B" },
-      { name: "Charcoal Dark", value: "#1B1B1B" },
-      { name: "Clean White", value: "#FFFFFF" }
-    ];
-
-    const swatchesHtml = defaultList.map(p => {
-      const isSelected = (curVal.toLowerCase() === p.value.toLowerCase()) || (!curVal && p.value === "");
-      const bgStyle = p.value === "transparent"
-        ? 'background: repeating-conic-gradient(#808080 0% 25%, transparent 0% 50%) 50% / 10px 10px;'
-        : (p.value ? 'background:' + p.value + ';' : 'background: linear-gradient(135deg, var(--accent), var(--accent2));');
-      return '<button type="button" class="palette-swatch-btn' + (isSelected ? ' selected' : '') + '" data-color="' + esc(p.value) + '" data-target-bind="' + bind + '" title="' + esc(p.name + (p.value ? ' (' + p.value + ')' : '')) + '">' +
-        '<span class="palette-swatch-color" style="' + bgStyle + '"></span>' +
-        '<span class="palette-swatch-name">' + esc(p.name) + '</span>' +
-      '</button>';
-    }).join("");
-
-    const displayColor = curVal || "inherit / default";
-    const pickerVal = (curVal && curVal.startsWith("#")) ? curVal : "#0F86A1";
-
-    return '<div class="palette-picker-container" data-palette-bind="' + bind + '">' +
-      (label ? '<div class="fl-label" style="margin-bottom:4px">' + esc(label) + '</div>' : '') +
-      '<div class="palette-swatches-grid">' + swatchesHtml + '</div>' +
-      '<div class="palette-custom-row">' +
-        '<div class="palette-custom-preview">' +
-          '<span class="palette-current-indicator" style="background:' + (curVal || 'var(--card-bg, #FFFFFF)') + '"></span>' +
-          '<span class="palette-current-label mono">' + esc(displayColor) + '</span>' +
-        '</div>' +
-        '<label class="palette-custom-label">' +
-          '<span>Custom Picker:</span>' +
-          '<input type="color" class="palette-native-color" data-target-bind="' + bind + '" value="' + esc(pickerVal) + '"/>' +
-        '</label>' +
-        (curVal ? '<button type="button" class="mini-btn danger palette-clear-btn" data-target-bind="' + bind + '">Clear</button>' : '') +
-      '</div>' +
-      (hint ? '<span class="fl-hint">' + esc(hint) + '</span>' : '') +
-    '</div>';
   }
 
   /* ---------- icon picker (for dynamic handles / extra cards) ---------- */
@@ -506,69 +485,65 @@
     r.readAsDataURL(f);
   }
 
-  /* ---------- palette picker handlers ---------- */
+  /* ---------- color palette component handlers (Image 2 style) ---------- */
   function handlePaletteClick(e) {
-    const btn = e.target.closest(".palette-swatch-btn");
-    if (btn) {
-      const color = btn.dataset.color;
-      const bind = btn.dataset.targetBind;
-      const tokens = parsePath(bind);
-      setPath(tokens, color);
-      markChanged();
-      applyTheme();
-      const container = btn.closest(".palette-picker-container");
-      if (container) {
-        container.querySelectorAll(".palette-swatch-btn").forEach(b => {
-          b.classList.toggle("selected", b === btn);
-        });
-        const ind = container.querySelector(".palette-current-indicator");
-        if (ind) ind.style.background = color || "var(--card-bg, #FFFFFF)";
-        const lbl = container.querySelector(".palette-current-label");
-        if (lbl) lbl.textContent = color || "inherit / default";
-        const colorInput = container.querySelector(".palette-native-color");
-        if (colorInput && color && color.startsWith("#")) colorInput.value = color;
+    const card = e.target.closest(".palette-swatch-card");
+    if (card && !e.target.matches(".palette-native-input, .palette-reset-btn")) {
+      const inp = card.querySelector(".palette-native-input");
+      if (inp && typeof inp.showPicker === "function") {
+        try { inp.showPicker(); } catch (err) {}
       }
       return;
     }
-    const clr = e.target.closest(".palette-clear-btn");
-    if (clr) {
-      const bind = clr.dataset.targetBind;
+    const reset = e.target.closest(".palette-reset-btn");
+    if (reset) {
+      const bind = reset.dataset.resetBind;
+      if (!bind) return;
       const tokens = parsePath(bind);
       setPath(tokens, "");
+      const wrap = reset.closest(".color-palette-wrap");
+      if (wrap) {
+        const swatch = wrap.querySelector(".palette-swatch-box");
+        if (swatch) swatch.style.background = "var(--accent)";
+        const hexEl = wrap.querySelector(".palette-hex-code");
+        if (hexEl) hexEl.textContent = "inherit";
+        const inp = wrap.querySelector(".palette-native-input");
+        if (inp) inp.dataset.paletteUnset = "1";
+      }
+      reset.remove();
       markChanged();
       applyTheme();
-      const container = clr.closest(".palette-picker-container");
-      if (container) {
-        container.querySelectorAll(".palette-swatch-btn").forEach(b => {
-          b.classList.toggle("selected", b.dataset.color === "");
-        });
-        const ind = container.querySelector(".palette-current-indicator");
-        if (ind) ind.style.background = "var(--card-bg, #FFFFFF)";
-        const lbl = container.querySelector(".palette-current-label");
-        if (lbl) lbl.textContent = "inherit / default";
-      }
     }
   }
 
   function handlePaletteNativeInput(e) {
     const inp = e.target;
-    if (!inp.matches(".palette-native-color")) return;
-    const bind = inp.dataset.targetBind;
-    const val = inp.value;
+    if (!inp.matches(".palette-native-input")) return;
+    const bind = inp.dataset.bind;
+    if (!bind) return;
+    const val = (inp.value || "").toLowerCase();
+    inp.dataset.paletteUnset = "0";
     const tokens = parsePath(bind);
     setPath(tokens, val);
+    const wrap = inp.closest(".color-palette-wrap") || inp.closest(".palette-swatch-card");
+    if (wrap) {
+      const swatch = wrap.querySelector(".palette-swatch-box");
+      if (swatch) swatch.style.background = val;
+      const hexEl = wrap.querySelector(".palette-hex-code");
+      if (hexEl) hexEl.textContent = val;
+      const mainWrap = wrap.closest(".color-palette-wrap");
+      if (mainWrap && mainWrap.dataset.allowReset === "1" && !mainWrap.querySelector(".palette-reset-btn")) {
+        const resetBtn = document.createElement("button");
+        resetBtn.type = "button";
+        resetBtn.className = "palette-reset-btn";
+        resetBtn.dataset.resetBind = bind;
+        resetBtn.title = "Reset / inherit color";
+        resetBtn.textContent = "✕";
+        mainWrap.appendChild(resetBtn);
+      }
+    }
     markChanged();
     applyTheme();
-    const container = inp.closest(".palette-picker-container");
-    if (container) {
-      container.querySelectorAll(".palette-swatch-btn").forEach(b => {
-        b.classList.toggle("selected", b.dataset.color.toLowerCase() === val.toLowerCase());
-      });
-      const ind = container.querySelector(".palette-current-indicator");
-      if (ind) ind.style.background = val;
-      const lbl = container.querySelector(".palette-current-label");
-      if (lbl) lbl.textContent = val;
-    }
   }
 
   /* ---------- icon picker wiring (delegated) ---------- */
@@ -678,8 +653,8 @@
       "Fine-tune font family, custom heading and body colors, and font scale for this section.",
       '<div class="form-grid two-col">' +
         fieldRow("Font Family", selectInput(["type", "overrides", secKey, "font"], [["inherit", "Inherit (global)"], ["space", "Space Grotesk"], ["sans", "System UI"], ["serif", "Serif"], ["mono", "Mono"]])) +
-        fieldRow("Heading Color", hexTextInput(["type", "overrides", secKey, "headingColor"])) +
-        fieldRow("Body Color", hexTextInput(["type", "overrides", secKey, "bodyColor"])) +
+        fieldRow("Heading Color", colorPaletteInput(["type", "overrides", secKey, "headingColor"], "", true)) +
+        fieldRow("Body Color", colorPaletteInput(["type", "overrides", secKey, "bodyColor"], "", true)) +
         fieldRow("Text Size (100 = default)", rangeInput(["type", "overrides", secKey, "size"], 70, 150)) +
       "</div>"
     );
@@ -1029,30 +1004,12 @@
         '</div>' +
       '</div>' +
       '<div style="margin-top:20px;border-top:1px solid var(--line);padding-top:16px;">' +
-        '<h4 style="margin:0 0 10px;font-size:15px;color:var(--ink);">Hero Box Upper Blur Layer - Gradient Color 1</h4>' +
-        colorPalettePicker(["owner", "heroOverlayColor1"], "Hero Overlay Color 1", [
-          { name: "Ocean Teal", value: "#0F86A1" },
-          { name: "Amber Peach", value: "#EBC7B5" },
-          { name: "Midnight Navy", value: "#0B0F19" },
-          { name: "Charcoal Dark", value: "#1B1B1B" },
-          { name: "Emerald Green", value: "#10B981" },
-          { name: "Violet Purple", value: "#8B5CF6" },
-          { name: "Sunset Rose", value: "#F43F5E" },
-          { name: "Transparent", value: "transparent" }
-        ], "Primary upper blur layer gradient color.") +
-      '</div>' +
-      '<div style="margin-top:16px;">' +
-        '<h4 style="margin:0 0 10px;font-size:15px;color:var(--ink);">Hero Box Upper Blur Layer - Gradient Color 2</h4>' +
-        colorPalettePicker(["owner", "heroOverlayColor2"], "Hero Overlay Color 2", [
-          { name: "Charcoal Dark", value: "#1B1B1B" },
-          { name: "Midnight Navy", value: "#0B0F19" },
-          { name: "Ocean Teal", value: "#0F86A1" },
-          { name: "Deep Slate", value: "#1E293B" },
-          { name: "Amber Gold", value: "#FFE066" },
-          { name: "Royal Indigo", value: "#312E81" },
-          { name: "Wine Berry", value: "#4C0519" },
-          { name: "Transparent", value: "transparent" }
-        ], "Secondary upper blur layer gradient color.") +
+        '<h4 style="margin:0 0 10px;font-size:15px;color:var(--ink);">Hero Box Upper Blur Layer - Gradient Tint Overlay</h4>' +
+        '<div class="form-grid two-col">' +
+          fieldRow("Gradient Color 1 (Ocean Teal)", colorPaletteInput(["owner", "heroOverlayColor1"], "#0F86A1")) +
+          fieldRow("Gradient Color 2 (Amber Peach)", colorPaletteInput(["owner", "heroOverlayColor2"], "#EBC7B5")) +
+        '</div>' +
+        '<span class="fl-hint" style="margin-top:8px">Two-color palette tint layer. When hero image or video wallpaper is uploaded, it shines through this translucent dual-gradient layer.</span>' +
       '</div>'
     );
 
@@ -1184,7 +1141,7 @@
     renderList(host, {
       items: state.education,
       emptyMsg: "No education entries yet.",
-      add() { state.education.push({ degree: "Degree", school: "School", when: "2020 – 2024", desc: "" }); },
+      add() { state.education.push({ degree: "Degree", school: "School", when: "2020 - 2024", desc: "" }); },
       fields: [i =>
         fieldRow("Degree", tInput(["education", i, "degree"])) +
         fieldRow("School", tInput(["education", i, "school"])) +
@@ -1282,16 +1239,16 @@
       "Color Palette & Accents",
       "Core visual colors applied across buttons, highlights, badges, and backgrounds.",
       '<div class="form-grid two-col">' +
-        fieldRow("Accent Color", colorInput(["theme", "accent"])) +
-        fieldRow("Secondary Accent Color", colorInput(["theme", "accent2"])) +
-        fieldRow("Background Color", colorInput(["theme", "bg"])) +
+        fieldRow("Accent Color", colorPaletteInput(["theme", "accent"], "#0F86A1")) +
+        fieldRow("Secondary Accent Color", colorPaletteInput(["theme", "accent2"], "#EBC7B5")) +
+        fieldRow("Background Color", colorPaletteInput(["theme", "bg"], "#F8EFE5")) +
       '</div>'
     );
 
     const sceneCard = cardWrap(
       "3D Interactive Scene",
       "Interactive Three.js geometric simulations running in the backdrop.",
-      fieldRow("3D Scene Simulation", selectInput(["theme", "scene"], scenes), "Circle → Spheres & rings, Workshop → floating 3D shapes, Particles → ambient particle cloud")
+      fieldRow("3D Scene Simulation", selectInput(["theme", "scene"], scenes), "Circle -> Spheres & rings, Workshop -> floating 3D shapes, Particles -> ambient particle cloud")
     );
 
     const cursorCard = cardWrap(
@@ -1299,9 +1256,9 @@
       "Interactive cursor styling and pointer ambient glow.",
       '<div class="form-grid two-col">' +
         fieldRow("Cursor Style", selectInput(["theme", "cursor", "style"], cursorStyles)) +
-        fieldRow("Cursor Color", colorInput(["theme", "cursor", "color"])) +
+        fieldRow("Cursor Color", colorPaletteInput(["theme", "cursor", "color"], "#0F86A1")) +
         fieldRow("Glow Around Cursor", checkboxInput(["theme", "cursor", "glow"])) +
-        fieldRow("Glow Color", colorInput(["theme", "cursor", "glowColor"])) +
+        fieldRow("Glow Color", colorPaletteInput(["theme", "cursor", "glowColor"], "#0F86A1")) +
       '</div>'
     );
 
@@ -1311,8 +1268,8 @@
       '<div class="form-grid two-col">' +
         fieldRow("Heading Font", selectInput(["type", "fontHeading"], FONT_OPTS)) +
         fieldRow("Body Font", selectInput(["type", "fontBody"], FONT_OPTS)) +
-        fieldRow("Heading Color", colorInput(["type", "headingColor"])) +
-        fieldRow("Body Color", colorInput(["type", "bodyColor"])) +
+        fieldRow("Heading Color", colorPaletteInput(["type", "headingColor"], "#1B1B1B")) +
+        fieldRow("Body Color", colorPaletteInput(["type", "bodyColor"], "#333333")) +
         fieldRow("Heading Size (100 = default)", rangeInput(["type", "headingScale"], 70, 150)) +
         fieldRow("Body Size (100 = default)", rangeInput(["type", "bodyScale"], 70, 150)) +
       '</div>'
@@ -1330,16 +1287,7 @@
         fieldRow("Left Text", tInput(["theme", "footer", "left"])) +
         fieldRow("Right Text (e.g. ©)", tInput(["theme", "footer", "right"])) +
       '</div>' +
-      fieldRow("Footer Background Color Palette", colorPalettePicker(["theme", "footer", "bg"], "Footer Background Color", [
-        { name: "Default (Theme)", value: "" },
-        { name: "Transparent", value: "transparent" },
-        { name: "Dark Midnight", value: "#0B0F19" },
-        { name: "Deep Slate", value: "#0F172A" },
-        { name: "Charcoal Dark", value: "#1B1B1B" },
-        { name: "Ocean Teal", value: "#0F86A1" },
-        { name: "Amber Cream", value: "#EBC7B5" },
-        { name: "Soft White", value: "#FFFFFF" }
-      ]), "Select a visual color swatch or custom color for the footer background.")
+      fieldRow("Footer Background Color", colorPaletteInput(["theme", "footer", "bg"], "", true), "Choose a custom color from the palette for the footer background, or click ✕ to reset to theme default.")
     );
     return footerCard + styleBlock("footer");
   }
@@ -1422,7 +1370,7 @@
     $$("#editorContent [data-bind]").forEach(inp => {
       const p = inp.dataset.bind;
       if (!p) return;
-      if (inp.classList.contains("palette-native-color")) return;
+      if (inp.classList.contains("palette-native-input") && inp.dataset.paletteUnset === "1") return;
       const tokens = parsePath(p);
       if (tokens[0] === "about" && tokens.length === 1) {
         state.about = inp.value.split("\n").map(s => s.trim()).filter(Boolean);
@@ -1565,6 +1513,7 @@
     content.addEventListener("click", handleIconPick);
     content.addEventListener("click", handlePaletteClick);
     content.addEventListener("input", handlePaletteNativeInput);
+    content.addEventListener("change", handlePaletteNativeInput);
     content.addEventListener("change", handleRowFile);
     content.addEventListener("input", e => {
       if (e.target.matches("[data-bind], .icon-emoji, #avatarUrl, #aboutTa, #logoUrl, #heroMediaUrl")) markChanged();

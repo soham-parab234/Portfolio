@@ -5,7 +5,7 @@
   "main": "server/server.js",
   "scripts": {
     "start": "node tools/serve.js",
-    "test": "node tools/test-security-and-ui.js"
+    "test": "node test/test.js"
   },
   "keywords": [
     "portfolio",

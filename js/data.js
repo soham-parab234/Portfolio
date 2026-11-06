@@ -26,8 +26,8 @@ const DEFAULT_DATA = {
     logo: "", // top bar logo image/GIF
     heroMedia: "", // main big top home page box image/video
     heroMediaType: "", // "image" | "video" | ""
-    heroOverlayColor1: "#0F86A1", // Home Hero Box upper blur layer color 1
-    heroOverlayColor2: "#1B1B1B", // Home Hero Box upper blur layer color 2
+    heroOverlayColor1: "#0F86A1", // Home Hero Box upper blur layer color 1 (Ocean Teal)
+    heroOverlayColor2: "#EBC7B5", // Home Hero Box upper blur layer color 2 (Amber Peach)
     email: "alex.stone@example.com",
     phone: "+1 (555) 010-2030",
     ctaPrimary: "See the work",
@@ -141,7 +141,7 @@ const DEFAULT_DATA = {
     {
       degree: "B.S. Computer Engineering",
       school: "State University",
-      when: "2022 – 2026 (expected)",
+      when: "2022 - 2026 (expected)",
       desc:
         "Focus: computer graphics, operating systems, embedded systems, " +
         "and machine learning. Relevant coursework: Graphics, Distributed " +
@@ -331,7 +331,11 @@ function loadData() {
         const k = parsed.theme.wallpaperImage.replace("idb:", "");
         if (mediaCache[k]) parsed.theme.wallpaperImage = mediaCache[k];
       }
-      return deepMerge(structuredClone(DEFAULT_DATA), parsed);
+      const result = deepMerge(structuredClone(DEFAULT_DATA), parsed);
+      if (result.owner && (!result.owner.heroOverlayColor2 || result.owner.heroOverlayColor2 === "#1B1B1B")) {
+        result.owner.heroOverlayColor2 = "#EBC7B5";
+      }
+      return result;
     }
   } catch (e) {
     console.warn("Failed to read portfolio data", e);

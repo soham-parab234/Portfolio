@@ -112,6 +112,8 @@ js/
   icons.js              Modular SVG icon set
   vendor/
     three.min.js        Three.js library (vendored for offline reliability)
+test/
+  test.js               Automated QA and security verification suite
 tools/
   serve.js              Zero-dependency Node HTTP server
 .gitignore              Repository exclusion list for git hygiene

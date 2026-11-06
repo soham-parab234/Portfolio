@@ -567,7 +567,7 @@ body[data-cursor="ring"] .cursor-fx {
 .hero-media-backdrop {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
   overflow: hidden;
   display: none;
@@ -586,12 +586,10 @@ body[data-cursor="ring"] .cursor-fx {
 .hero-media-overlay {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 2;
   pointer-events: none;
   display: none;
-  background: linear-gradient(135deg, var(--hero-overlay-1, rgba(15, 134, 161, 0.78)) 0%, var(--hero-overlay-2, rgba(27, 27, 27, 0.65)) 100%);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: linear-gradient(135deg, var(--hero-overlay-1, rgba(15, 134, 161, 0.48)) 0%, var(--hero-overlay-2, rgba(235, 199, 181, 0.40)) 100%);
   border-radius: inherit;
 }
 .hero.has-hero-media .hero-media-overlay {
@@ -604,7 +602,10 @@ body[data-cursor="ring"] .cursor-fx {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  z-index: 1;
+  z-index: 3;
+}
+.hero.has-hero-media .hero-bg-art .hero-blur-orb {
+  display: none !important;
 }
 
 .hero-blur-orb {
@@ -682,7 +683,7 @@ body[data-cursor="ring"] .cursor-fx {
 
 .hero-inner {
   position: relative;
-  z-index: 2;
+  z-index: 5;
   max-width: 940px;
   margin: 0 auto;
   width: 100%;
