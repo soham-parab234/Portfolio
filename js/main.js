@@ -208,12 +208,12 @@
   /* ---------- adaptive loading screen ---------- */
   function updateLoader() {
     const o = D.owner || {};
-    setText("loaderTitle", o.name || "Alex Stone");
-    setText("loaderSub", o.title || "Computer Engineering Student");
+    if (o.name) setText("loaderTitle", o.name);
+    if (o.title) setText("loaderSub", o.title);
     const badgeInner = document.getElementById("loaderBadgeInner");
     if (badgeInner) {
-      if (o.logo) {
-        badgeInner.innerHTML = '<img class="brand-logo-img" src="' + esc(o.logo) + '" alt="' + esc(o.name) + ' Logo" />';
+      if (o.logo && !o.logo.startsWith("idb:")) {
+        badgeInner.innerHTML = '<img class="brand-logo-img" src="' + esc(o.logo) + '" alt="' + esc(o.name || "Brand") + ' Logo" />';
       } else {
         badgeInner.innerHTML = '<span class="brand-dot"></span>';
       }

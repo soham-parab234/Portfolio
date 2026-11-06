@@ -143,6 +143,13 @@ async function runBrowserTests() {
     return;
   }
 
+  const { startServer } = require("../server/server");
+  let serverInstance = null;
+  try {
+    serverInstance = startServer(4173);
+    await new Promise(r => setTimeout(r, 300));
+  } catch (e) {}
+
   console.log("[2/3] Headless browser integration tests...");
   const port = 9444;
   const tempProfile = path.join(ROOT_DIR, ".test-profile-tmp");
@@ -164,6 +171,8 @@ async function runBrowserTests() {
 
     // 1. Test Admin Dashboard Color Palette Component
     await client.send("Page.navigate", { url: "http://127.0.0.1:4173/admin.html" });
+    await new Promise(r => setTimeout(r, 1200));
+    await client.eval(`localStorage.clear(); sessionStorage.clear(); location.reload();`);
     await new Promise(r => setTimeout(r, 1200));
 
     const loginRes = await client.eval(`
@@ -237,6 +246,9 @@ async function runBrowserTests() {
   } finally {
     try { proc.kill("SIGKILL"); } catch (e) {}
     try { fs.rmSync(tempProfile, { recursive: true, force: true }); } catch (e) {}
+    if (serverInstance && serverInstance.close) {
+      try { serverInstance.close(); } catch (e) {}
+    }
   }
 }
 

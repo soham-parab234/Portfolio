@@ -10,6 +10,42 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
+  <script>
+    (function() {
+      try {
+        var raw = localStorage.getItem("bp_portfolio_v2");
+        var d = raw ? JSON.parse(raw) : null;
+        var t = d && d.theme;
+        if (t) {
+          var r = document.documentElement;
+          if (t.bg) r.style.setProperty("--bg", t.bg);
+          if (t.accent) {
+            r.style.setProperty("--accent", t.accent);
+            r.style.setProperty("--bg-teal", t.accent);
+          }
+          if (t.accent2) r.style.setProperty("--accent2", t.accent2);
+          function isDarkHex(hex) {
+            if (!hex || typeof hex !== "string" || !hex.startsWith("#")) return false;
+            var c = hex.replace("#", "");
+            if (c.length === 3) c = c.split("").map(function(x) { return x + x; }).join("");
+            var n = parseInt(c, 16);
+            var red = (n >> 16) & 255, green = (n >> 8) & 255, blue = n & 255;
+            var lum = (0.299 * red + 0.587 * green + 0.114 * blue) / 255;
+            return lum < 0.48;
+          }
+          var isDark = t.themeMode === "dark" || isDarkHex(t.bg) || t.isDark === true;
+          r.setAttribute("data-theme-mode", isDark ? "dark" : "light");
+          if (isDark) {
+            r.style.setProperty("--ink", "#F8EFE5");
+            r.style.setProperty("--mut", "rgba(255, 255, 255, 0.78)");
+          } else {
+            r.style.setProperty("--ink", "#1B1B1B");
+            r.style.setProperty("--mut", "#555555");
+          }
+        }
+      } catch(e) {}
+    })();
+  </script>
 </head>
 <body>
 
@@ -23,12 +59,33 @@
       <div class="loader-badge" id="loaderBadge">
         <span class="loader-badge-inner" id="loaderBadgeInner"></span>
       </div>
-      <h2 class="loader-title" id="loaderTitle">Alex Stone</h2>
-      <p class="loader-sub mono" id="loaderSub">Computer Engineering Student</p>
+      <h2 class="loader-title" id="loaderTitle"></h2>
+      <p class="loader-sub mono" id="loaderSub"></p>
       <div class="loader-bar-wrap">
         <div class="loader-bar" id="loaderBar"></div>
       </div>
     </div>
+    <script>
+      (function() {
+        try {
+          var raw = localStorage.getItem("bp_portfolio_v2");
+          var d = raw ? JSON.parse(raw) : (window.bpData && window.bpData.DEFAULT_DATA);
+          var o = d && d.owner;
+          if (o) {
+            var tEl = document.getElementById("loaderTitle");
+            var sEl = document.getElementById("loaderSub");
+            var bEl = document.getElementById("loaderBadgeInner");
+            if (tEl && o.name) tEl.textContent = o.name;
+            if (sEl && o.title) sEl.textContent = o.title;
+            if (bEl && o.logo && !o.logo.startsWith("idb:")) {
+              bEl.innerHTML = '<img class="brand-logo-img" src="' + o.logo + '" alt="' + (o.name || "Brand") + ' Logo" />';
+            } else if (bEl) {
+              bEl.innerHTML = '<span class="brand-dot"></span>';
+            }
+          }
+        } catch(e) {}
+      })();
+    </script>
   </div>
 
   <!-- fixed 3D / backdrop layers -->

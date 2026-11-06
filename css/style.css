@@ -2115,11 +2115,23 @@ body[data-theme-mode="dark"] .ticker-track .sep {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg, #F8EFE5);
-  color: var(--ink, #1B1B1B);
+  background: var(--bg, #0B0F19);
+  color: var(--ink, #F8EFE5);
   transition: opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.55s ease;
   overflow: hidden;
   pointer-events: auto;
+}
+
+html[data-theme-mode="light"] .loading-screen,
+body[data-theme-mode="light"] .loading-screen {
+  background: var(--bg, #F8EFE5);
+  color: var(--ink, #1B1B1B);
+}
+
+html[data-theme-mode="dark"] .loading-screen,
+body[data-theme-mode="dark"] .loading-screen {
+  background: var(--bg, #0B0F19);
+  color: var(--ink, #F8EFE5);
 }
 
 .loading-screen.is-loaded {
