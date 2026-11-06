@@ -169,6 +169,15 @@
       if (t.footer && t.footer.bg) foot.style.background = t.footer.bg;
       else foot.style.removeProperty("background");
     }
+
+    // hero box upper blur layer overlay colors
+    const heroEl = document.getElementById("hero");
+    if (heroEl && D.owner) {
+      if (D.owner.heroOverlayColor1) heroEl.style.setProperty("--hero-overlay-1", D.owner.heroOverlayColor1);
+      else heroEl.style.removeProperty("--hero-overlay-1");
+      if (D.owner.heroOverlayColor2) heroEl.style.setProperty("--hero-overlay-2", D.owner.heroOverlayColor2);
+      else heroEl.style.removeProperty("--hero-overlay-2");
+    }
   }
 
   /* ---------- typography -> CSS variables ---------- */
@@ -319,6 +328,12 @@
 
     // Hero box background media (image / video)
     const heroEl = document.getElementById("hero");
+    if (heroEl) {
+      if (o.heroOverlayColor1) heroEl.style.setProperty("--hero-overlay-1", o.heroOverlayColor1);
+      else heroEl.style.removeProperty("--hero-overlay-1");
+      if (o.heroOverlayColor2) heroEl.style.setProperty("--hero-overlay-2", o.heroOverlayColor2);
+      else heroEl.style.removeProperty("--hero-overlay-2");
+    }
     const mediaWrap = document.getElementById("heroMediaBackdrop");
     if (heroEl && mediaWrap) {
       if (o.heroMedia) {
@@ -687,28 +702,46 @@
       let spotX = mx, spotY = my;
       let curX = mx, curY = my;
       let active = false;
+      let isIdle = false;
+      let idleTimer = null;
 
-      window.addEventListener("pointermove", e => {
-        mx = e.clientX;
-        my = e.clientY;
+      function wakeLoop() {
         if (!active) {
           active = true;
           spotX = mx; spotY = my;
           curX = mx; curY = my;
         }
+        if (isIdle) {
+          isIdle = false;
+          requestAnimationFrame(loop);
+        }
+      }
+
+      window.addEventListener("pointermove", e => {
+        mx = e.clientX;
+        my = e.clientY;
+        wakeLoop();
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => { isIdle = true; }, 1500);
       }, { passive: true });
 
       function loop() {
-        if (active) {
-          spotX += (mx - spotX) * 0.14;
-          spotY += (my - spotY) * 0.14;
-          curX += (mx - curX) * 0.28;
-          curY += (my - curY) * 0.28;
+        if (!active || isIdle) return;
+        const dx = mx - spotX;
+        const dy = my - spotY;
+        spotX += dx * 0.16;
+        spotY += dy * 0.16;
+        curX += (mx - curX) * 0.32;
+        curY += (my - curY) * 0.32;
 
-          spot.style.transform = "translate3d(" + spotX + "px," + spotY + "px, 0)";
-          cur.style.transform = "translate3d(" + curX + "px," + curY + "px, 0)";
+        spot.style.transform = "translate3d(" + spotX.toFixed(1) + "px," + spotY.toFixed(1) + "px, 0)";
+        cur.style.transform = "translate3d(" + curX.toFixed(1) + "px," + curY.toFixed(1) + "px, 0)";
+
+        if (Math.abs(dx) > 0.15 || Math.abs(dy) > 0.15) {
+          requestAnimationFrame(loop);
+        } else {
+          isIdle = true;
         }
-        requestAnimationFrame(loop);
       }
       requestAnimationFrame(loop);
     }
@@ -787,11 +820,11 @@
         }
       });
 
-      // 3. Ambient mesh wallpaper drift
-      meshOrbs.forEach((orb, i) => {
-        const spd = (i % 2 === 0 ? 1 : -1) * 0.08 * (i + 1);
-        orb.style.transform = "translate3d(0, " + (scrollY * spd).toFixed(1) + "px, 0)";
-      });
+      // 3. Ambient mesh wallpaper smooth drift (applied to container to avoid GPU repaint conflicts with CSS keyframes)
+      const meshCanvas = document.querySelector(".circle-wallpaper");
+      if (meshCanvas) {
+        meshCanvas.style.transform = "translate3d(0, " + (scrollY * 0.1).toFixed(1) + "px, 0)";
+      }
 
       if (Math.abs(targetScrollY - scrollY) >= 0.2) {
         requestAnimationFrame(updateScroll);

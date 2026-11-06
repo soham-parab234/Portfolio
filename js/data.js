@@ -26,6 +26,8 @@ const DEFAULT_DATA = {
     logo: "", // top bar logo image/GIF
     heroMedia: "", // main big top home page box image/video
     heroMediaType: "", // "image" | "video" | ""
+    heroOverlayColor1: "#0F86A1", // Home Hero Box upper blur layer color 1
+    heroOverlayColor2: "#1B1B1B", // Home Hero Box upper blur layer color 2
     email: "alex.stone@example.com",
     phone: "+1 (555) 010-2030",
     ctaPrimary: "See the work",

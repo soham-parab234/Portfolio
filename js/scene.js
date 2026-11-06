@@ -34,8 +34,8 @@
     const white = "#FFFFFF";
     const sceneMode = theme.scene || "circle";
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.setSize(container.clientWidth || window.innerWidth, container.clientHeight || window.innerHeight);
     renderer.domElement.style.position = "absolute";
     renderer.domElement.style.inset = "0";
@@ -78,7 +78,7 @@
       ];
 
       sphereDefs.forEach((d, i) => {
-        const geo = new THREE.SphereGeometry(d.r, 48, 48);
+        const geo = new THREE.SphereGeometry(d.r, 28, 28);
         const mat = new THREE.MeshStandardMaterial({
           color: d.col,
           roughness: d.rough,
@@ -106,7 +106,7 @@
       ];
 
       torusDefs.forEach((d, i) => {
-        const geo = new THREE.TorusGeometry(d.r, d.tube, 28, 64);
+        const geo = new THREE.TorusGeometry(d.r, d.tube, 18, 36);
         const mat = new THREE.MeshStandardMaterial({
           color: d.col,
           roughness: d.rough,
@@ -242,8 +242,22 @@
     /* ----- Animation loop ----- */
     const clock = new THREE.Clock();
     let animId = null;
+    let isVisible = !document.hidden;
+
+    function handleVisibility() {
+      isVisible = !document.hidden;
+      if (isVisible && !animId) {
+        clock.start();
+        animate();
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
 
     const animate = () => {
+      if (!isVisible) {
+        animId = null;
+        return;
+      }
       const t = clock.getElapsedTime();
 
       if (!reduceMotion.matches) {
@@ -290,6 +304,7 @@
     return {
       ok: true,
       dispose() {
+        document.removeEventListener("visibilitychange", handleVisibility);
         window.removeEventListener("resize", resize);
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("scroll", onScroll);

@@ -39,9 +39,34 @@
     return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
   }
 
+  /* Cache blob URLs for large base64 media to prevent DOM memory inflation */
+  const blobUrlCache = new Map();
+  function getCachedMediaUrl(dataUrl) {
+    if (!dataUrl || typeof dataUrl !== "string") return "";
+    if (!dataUrl.startsWith("data:") || dataUrl.length < 50000) return dataUrl;
+    if (blobUrlCache.has(dataUrl)) return blobUrlCache.get(dataUrl);
+    try {
+      const parts = dataUrl.split(",");
+      const mime = (parts[0].match(/:(.*?);/) || [])[1] || "application/octet-stream";
+      const bstr = atob(parts[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      const blob = new Blob([u8arr], { type: mime });
+      const url = URL.createObjectURL(blob);
+      blobUrlCache.set(dataUrl, url);
+      return url;
+    } catch (e) {
+      return dataUrl;
+    }
+  }
+
   /* ---------- theme & dynamic contrast adaptation ---------- */
   function applyTheme() {
     const t = state.theme || {};
+    const o = state.owner || {};
     const r = document.documentElement.style;
     const accent = t.accent || "#0F86A1";
     const accent2 = t.accent2 || "#EBC7B5";
@@ -52,6 +77,12 @@
     r.setProperty("--accent2", accent2);
     r.setProperty("--bg", bg);
     r.setProperty("--accent-glow", hexA(accent, 0.45));
+
+    // hero box upper blur layer overlay colors
+    if (o.heroOverlayColor1) r.setProperty("--hero-overlay-1", o.heroOverlayColor1);
+    else r.removeProperty("--hero-overlay-1");
+    if (o.heroOverlayColor2) r.setProperty("--hero-overlay-2", o.heroOverlayColor2);
+    else r.removeProperty("--hero-overlay-2");
 
     // Calculate background luminance to prevent text blending
     const lum = getLuminance(bg);
@@ -341,13 +372,64 @@
   }
   function imgInput(tokens, label) {
     const bind = tokens.join(".");
-    const cur = getPath(tokens);
-    const prev = cur ? '<img src="' + esc(cur) + '"/>' : '<div class="avatar-placeholder">no image</div>';
+    const cur = getPath(tokens) || "";
+    const isBase64 = cur && cur.startsWith("data:");
+    const displayVal = isBase64 ? "[Uploaded Local Media]" : cur;
+    const prevSrc = isBase64 ? getCachedMediaUrl(cur) : cur;
+    const prev = cur ? '<img src="' + esc(prevSrc) + '"/>' : '<div class="avatar-placeholder">no image</div>';
     return '<div class="upload-inline">' +
       '<div class="thumb">' + prev + "</div>" +
       '<input type="file" class="row-file" data-write="' + bind + '" accept="image/*"/>' +
-      '<input type="text" data-bind="' + bind + '" placeholder="' + esc(label || "Image URL") + '" value="' + esc(cur) + '"/>' +
+      '<input type="text" data-bind="' + bind + '" placeholder="' + esc(label || "Image URL") + '" value="' + esc(displayVal) + '" data-is-base64="' + (isBase64 ? "1" : "0") + '"/>' +
       "</div>";
+  }
+
+  /* ---------- color palette picker (reusable visual swatches + native picker) ---------- */
+  function colorPalettePicker(tokens, label, presets, hint) {
+    const bind = tokens.join(".");
+    const curVal = getPath(tokens) || "";
+    const defaultList = presets || [
+      { name: "Default (Theme)", value: "" },
+      { name: "Transparent", value: "transparent" },
+      { name: "Ocean Teal", value: "#0F86A1" },
+      { name: "Amber Peach", value: "#EBC7B5" },
+      { name: "Golden Yellow", value: "#FFE066" },
+      { name: "Midnight Navy", value: "#0B0F19" },
+      { name: "Deep Slate", value: "#1E293B" },
+      { name: "Charcoal Dark", value: "#1B1B1B" },
+      { name: "Clean White", value: "#FFFFFF" }
+    ];
+
+    const swatchesHtml = defaultList.map(p => {
+      const isSelected = (curVal.toLowerCase() === p.value.toLowerCase()) || (!curVal && p.value === "");
+      const bgStyle = p.value === "transparent"
+        ? 'background: repeating-conic-gradient(#808080 0% 25%, transparent 0% 50%) 50% / 10px 10px;'
+        : (p.value ? 'background:' + p.value + ';' : 'background: linear-gradient(135deg, var(--accent), var(--accent2));');
+      return '<button type="button" class="palette-swatch-btn' + (isSelected ? ' selected' : '') + '" data-color="' + esc(p.value) + '" data-target-bind="' + bind + '" title="' + esc(p.name + (p.value ? ' (' + p.value + ')' : '')) + '">' +
+        '<span class="palette-swatch-color" style="' + bgStyle + '"></span>' +
+        '<span class="palette-swatch-name">' + esc(p.name) + '</span>' +
+      '</button>';
+    }).join("");
+
+    const displayColor = curVal || "inherit / default";
+    const pickerVal = (curVal && curVal.startsWith("#")) ? curVal : "#0F86A1";
+
+    return '<div class="palette-picker-container" data-palette-bind="' + bind + '">' +
+      (label ? '<div class="fl-label" style="margin-bottom:4px">' + esc(label) + '</div>' : '') +
+      '<div class="palette-swatches-grid">' + swatchesHtml + '</div>' +
+      '<div class="palette-custom-row">' +
+        '<div class="palette-custom-preview">' +
+          '<span class="palette-current-indicator" style="background:' + (curVal || 'var(--card-bg, #FFFFFF)') + '"></span>' +
+          '<span class="palette-current-label mono">' + esc(displayColor) + '</span>' +
+        '</div>' +
+        '<label class="palette-custom-label">' +
+          '<span>Custom Picker:</span>' +
+          '<input type="color" class="palette-native-color" data-target-bind="' + bind + '" value="' + esc(pickerVal) + '"/>' +
+        '</label>' +
+        (curVal ? '<button type="button" class="mini-btn danger palette-clear-btn" data-target-bind="' + bind + '">Clear</button>' : '') +
+      '</div>' +
+      (hint ? '<span class="fl-hint">' + esc(hint) + '</span>' : '') +
+    '</div>';
   }
 
   /* ---------- icon picker (for dynamic handles / extra cards) ---------- */
@@ -401,14 +483,92 @@
     const f = inp.files[0];
     if (!f) return;
     if (!/^image\//.test(f.type)) { toast("Please pick an image file."); return; }
+    showAdminLoader("Loading image...", "Reading (" + (f.size / (1024 * 1024)).toFixed(1) + "MB)...");
     const r = new FileReader();
     r.onload = () => {
-      syncBind();
-      setPath(parsePath(inp.dataset.write), r.result);
+      hideAdminLoader();
+      const bind = inp.dataset.write;
+      setPath(parsePath(bind), r.result);
       markChanged();
-      renderSection(curTab);
+      const wrap = inp.closest(".upload-inline");
+      if (wrap) {
+        const thumb = wrap.querySelector(".thumb");
+        const txt = wrap.querySelector("input[type=text]");
+        const objUrl = getCachedMediaUrl(r.result);
+        if (thumb) thumb.innerHTML = '<img src="' + esc(objUrl) + '"/>';
+        if (txt) {
+          txt.value = "[Uploaded Local Media]";
+          txt.dataset.isBase64 = "1";
+        }
+      }
+      toast("Image updated ✓");
     };
     r.readAsDataURL(f);
+  }
+
+  /* ---------- palette picker handlers ---------- */
+  function handlePaletteClick(e) {
+    const btn = e.target.closest(".palette-swatch-btn");
+    if (btn) {
+      const color = btn.dataset.color;
+      const bind = btn.dataset.targetBind;
+      const tokens = parsePath(bind);
+      setPath(tokens, color);
+      markChanged();
+      applyTheme();
+      const container = btn.closest(".palette-picker-container");
+      if (container) {
+        container.querySelectorAll(".palette-swatch-btn").forEach(b => {
+          b.classList.toggle("selected", b === btn);
+        });
+        const ind = container.querySelector(".palette-current-indicator");
+        if (ind) ind.style.background = color || "var(--card-bg, #FFFFFF)";
+        const lbl = container.querySelector(".palette-current-label");
+        if (lbl) lbl.textContent = color || "inherit / default";
+        const colorInput = container.querySelector(".palette-native-color");
+        if (colorInput && color && color.startsWith("#")) colorInput.value = color;
+      }
+      return;
+    }
+    const clr = e.target.closest(".palette-clear-btn");
+    if (clr) {
+      const bind = clr.dataset.targetBind;
+      const tokens = parsePath(bind);
+      setPath(tokens, "");
+      markChanged();
+      applyTheme();
+      const container = clr.closest(".palette-picker-container");
+      if (container) {
+        container.querySelectorAll(".palette-swatch-btn").forEach(b => {
+          b.classList.toggle("selected", b.dataset.color === "");
+        });
+        const ind = container.querySelector(".palette-current-indicator");
+        if (ind) ind.style.background = "var(--card-bg, #FFFFFF)";
+        const lbl = container.querySelector(".palette-current-label");
+        if (lbl) lbl.textContent = "inherit / default";
+      }
+    }
+  }
+
+  function handlePaletteNativeInput(e) {
+    const inp = e.target;
+    if (!inp.matches(".palette-native-color")) return;
+    const bind = inp.dataset.targetBind;
+    const val = inp.value;
+    const tokens = parsePath(bind);
+    setPath(tokens, val);
+    markChanged();
+    applyTheme();
+    const container = inp.closest(".palette-picker-container");
+    if (container) {
+      container.querySelectorAll(".palette-swatch-btn").forEach(b => {
+        b.classList.toggle("selected", b.dataset.color.toLowerCase() === val.toLowerCase());
+      });
+      const ind = container.querySelector(".palette-current-indicator");
+      if (ind) ind.style.background = val;
+      const lbl = container.querySelector(".palette-current-label");
+      if (lbl) lbl.textContent = val;
+    }
   }
 
   /* ---------- icon picker wiring (delegated) ---------- */
@@ -604,10 +764,22 @@
     }
 
     bindMediaUpload("heroMediaUpload", data => {
-      syncBind();
       state.owner.heroMedia = data;
-      renderSection(curTab);
       markChanged();
+      const box = document.getElementById("heroMediaPreviewBox");
+      if (box) {
+        const objUrl = getCachedMediaUrl(data);
+        if (state.owner.heroMediaType === "video") {
+          box.innerHTML = '<video src="' + esc(objUrl) + '" autoplay muted loop playsinline></video>';
+        } else {
+          box.innerHTML = '<img src="' + esc(objUrl) + '" alt="Hero Media"/>';
+        }
+      }
+      const hmUrl = document.getElementById("heroMediaUrl");
+      if (hmUrl) {
+        hmUrl.value = "[Uploaded local media]";
+        hmUrl.dataset.isBase64 = "1";
+      }
       toast("Hero background media uploaded ✓");
     });
 
@@ -616,7 +788,7 @@
       logoClear.addEventListener("click", () => {
         state.owner.logo = "";
         const lUrl = document.getElementById("logoUrl");
-        if (lUrl) lUrl.value = "";
+        if (lUrl) { lUrl.value = ""; lUrl.dataset.isBase64 = "0"; }
         syncLogoAndFavicon("");
         markChanged();
         renderSection(curTab);
@@ -628,8 +800,11 @@
     if (hmClear) {
       hmClear.addEventListener("click", () => {
         state.owner.heroMedia = "";
+        const box = document.getElementById("heroMediaPreviewBox");
+        if (box) box.innerHTML = '<div class="avatar-placeholder" style="color:var(--mut);font-size:13px">Default Circle 3D</div>';
+        const hmUrl = document.getElementById("heroMediaUrl");
+        if (hmUrl) { hmUrl.value = ""; hmUrl.dataset.isBase64 = "0"; }
         markChanged();
-        renderSection(curTab);
         toast("Cleared hero media.");
       });
     }
@@ -640,11 +815,19 @@
     }
 
     bindUpload("wallpaperUpload", data => {
-      syncBind();
       state.theme.wallpaperImage = data;
       markChanged();
       applyTheme();
-      renderSection(curTab);
+      const wrap = document.getElementById("wallpaperUpload");
+      if (wrap) {
+        const row = wrap.closest(".upload-row");
+        if (row) {
+          const prevBox = row.querySelector(".avatar-preview");
+          if (prevBox) prevBox.innerHTML = '<img src="' + esc(getCachedMediaUrl(data)) + '" alt="Wallpaper Preview"/>';
+          const txt = row.querySelector("#wallpaperImageUrl");
+          if (txt) { txt.value = "[Uploaded local image]"; txt.dataset.isBase64 = "1"; }
+        }
+      }
       if (window.bpPalette) {
         showAdminLoader("Analyzing wallpaper colors...", "Deriving harmonious theme palette from image...");
         window.bpPalette.extractFromImage(data)
@@ -660,11 +843,19 @@
     });
 
     bindVideoUpload("wallpaperVideoUpload", data => {
-      syncBind();
       state.theme.wallpaperVideo = data;
       markChanged();
       applyTheme();
-      renderSection(curTab);
+      const wrap = document.getElementById("wallpaperVideoUpload");
+      if (wrap) {
+        const row = wrap.closest(".upload-row");
+        if (row) {
+          const prevBox = row.querySelector(".avatar-preview");
+          if (prevBox) prevBox.innerHTML = '<video src="' + esc(getCachedMediaUrl(data)) + '" autoplay loop muted playsinline></video>';
+          const txt = row.querySelector("#wallpaperVideoUrl");
+          if (txt) { txt.value = "[Uploaded local video]"; txt.dataset.isBase64 = "1"; }
+        }
+      }
       if (window.bpPalette) {
         showAdminLoader("Analyzing video colors...", "Sampling frames and extracting theme palette...");
         window.bpPalette.extractFromVideo(data)
@@ -770,13 +961,13 @@
   function buildProfile() {
     const o = state.owner;
     const logoPrev = o.logo
-      ? '<img src="' + esc(o.logo) + '" alt="Logo"/>'
+      ? '<img src="' + esc(getCachedMediaUrl(o.logo)) + '" alt="Logo"/>'
       : '<span class="brand-dot"></span>';
 
     const heroMediaPrev = o.heroMedia
       ? (o.heroMediaType === "video"
-          ? '<video src="' + esc(o.heroMedia) + '" autoplay muted loop playsinline></video>'
-          : '<img src="' + esc(o.heroMedia) + '" alt="Hero Media"/>')
+          ? '<video src="' + esc(getCachedMediaUrl(o.heroMedia)) + '" autoplay muted loop playsinline></video>'
+          : '<img src="' + esc(getCachedMediaUrl(o.heroMedia)) + '" alt="Hero Media"/>')
       : '<div class="avatar-placeholder" style="color:var(--mut);font-size:13px">Default Circle 3D</div>';
 
     const personalCard = cardWrap(
@@ -812,7 +1003,7 @@
           '<div class="upload-controls">' +
             '<input type="file" id="logoUpload" accept="image/*"/>' +
             '<span class="fl-hint">Upload a logo image / GIF or enter a direct URL:</span>' +
-            '<input type="text" id="logoUrl" placeholder="https://… / logo URL" value="' + esc(o.logo || "") + '"/>' +
+            '<input type="text" id="logoUrl" placeholder="https://… / logo URL" value="' + (o.logo && o.logo.startsWith("data:") ? "[Uploaded local logo]" : esc(o.logo || "")) + '" data-is-base64="' + (o.logo && o.logo.startsWith("data:") ? "1" : "0") + '"/>' +
             (o.logo ? '<button type="button" class="mini-btn danger" id="logoClear">Clear custom logo</button>' : "") +
           '</div>' +
         '</div>' +
@@ -820,8 +1011,8 @@
     );
 
     const heroMediaCard = cardWrap(
-      "Home Hero Box Background Media",
-      "Upload an image or video that appears directly inside the top hero box (above the background wallpaper).",
+      "Home Hero Box Background Media & Blur Layer",
+      "Upload an image or video inside the top hero box (above the background wallpaper), and customize its dual-color gradient blur layer.",
       '<div class="upload-block" style="margin-top:0">' +
         '<div class="upload-row">' +
           '<div class="hero-media-preview-box" id="heroMediaPreviewBox">' + heroMediaPrev + '</div>' +
@@ -832,10 +1023,36 @@
             '</div>' +
             '<input type="file" id="heroMediaUpload" accept="image/*,video/*"/>' +
             '<span class="fl-hint">Upload an image or video for the top main hero card box, or enter a URL:</span>' +
-            '<input type="text" id="heroMediaUrl" placeholder="https://… / media URL" value="' + esc(o.heroMedia || "") + '"/>' +
+            '<input type="text" id="heroMediaUrl" placeholder="https://… / media URL" value="' + (o.heroMedia && o.heroMedia.startsWith("data:") ? "[Uploaded local media]" : esc(o.heroMedia || "")) + '" data-is-base64="' + (o.heroMedia && o.heroMedia.startsWith("data:") ? "1" : "0") + '"/>' +
             (o.heroMedia ? '<button type="button" class="mini-btn danger" id="heroMediaClear">Clear hero media</button>' : "") +
           '</div>' +
         '</div>' +
+      '</div>' +
+      '<div style="margin-top:20px;border-top:1px solid var(--line);padding-top:16px;">' +
+        '<h4 style="margin:0 0 10px;font-size:15px;color:var(--ink);">Hero Box Upper Blur Layer - Gradient Color 1</h4>' +
+        colorPalettePicker(["owner", "heroOverlayColor1"], "Hero Overlay Color 1", [
+          { name: "Ocean Teal", value: "#0F86A1" },
+          { name: "Amber Peach", value: "#EBC7B5" },
+          { name: "Midnight Navy", value: "#0B0F19" },
+          { name: "Charcoal Dark", value: "#1B1B1B" },
+          { name: "Emerald Green", value: "#10B981" },
+          { name: "Violet Purple", value: "#8B5CF6" },
+          { name: "Sunset Rose", value: "#F43F5E" },
+          { name: "Transparent", value: "transparent" }
+        ], "Primary upper blur layer gradient color.") +
+      '</div>' +
+      '<div style="margin-top:16px;">' +
+        '<h4 style="margin:0 0 10px;font-size:15px;color:var(--ink);">Hero Box Upper Blur Layer - Gradient Color 2</h4>' +
+        colorPalettePicker(["owner", "heroOverlayColor2"], "Hero Overlay Color 2", [
+          { name: "Charcoal Dark", value: "#1B1B1B" },
+          { name: "Midnight Navy", value: "#0B0F19" },
+          { name: "Ocean Teal", value: "#0F86A1" },
+          { name: "Deep Slate", value: "#1E293B" },
+          { name: "Amber Gold", value: "#FFE066" },
+          { name: "Royal Indigo", value: "#312E81" },
+          { name: "Wine Berry", value: "#4C0519" },
+          { name: "Transparent", value: "transparent" }
+        ], "Secondary upper blur layer gradient color.") +
       '</div>'
     );
 
@@ -1019,7 +1236,7 @@
     let mediaBlock = "";
     if (t.wallpaper === "image") {
       const prev = t.wallpaperImage
-        ? '<img src="' + esc(t.wallpaperImage) + '" alt="Wallpaper Preview"/>'
+        ? '<img src="' + esc(getCachedMediaUrl(t.wallpaperImage)) + '" alt="Wallpaper Preview"/>'
         : '<div class="avatar-placeholder">No Image</div>';
       mediaBlock = '<div class="upload-block" style="margin-top:16px">' +
         '<span class="fl-label">Wallpaper Image & Auto-Theme</span>' +
@@ -1028,7 +1245,7 @@
           '<div class="upload-controls">' +
             '<input type="file" id="wallpaperUpload" accept="image/*"/>' +
             '<span class="fl-hint">Upload an image (or paste URL): theme and text colors auto-adapt!</span>' +
-            '<input type="text" id="wallpaperImageUrl" placeholder="https://… / image URL" value="' + esc(t.wallpaperImage || "") + '"/>' +
+            '<input type="text" id="wallpaperImageUrl" placeholder="https://… / image URL" value="' + (t.wallpaperImage && t.wallpaperImage.startsWith("data:") ? "[Uploaded local image]" : esc(t.wallpaperImage || "")) + '" data-is-base64="' + (t.wallpaperImage && t.wallpaperImage.startsWith("data:") ? "1" : "0") + '"/>' +
             '<button type="button" class="btn btn-ghost btn-sm" id="extractImageColorsBtn">🎨 Re-extract palette from image</button>' +
             (t.wallpaperImage ? '<button type="button" class="mini-btn danger" id="wallpaperClear">Clear wallpaper</button>' : "") +
           '</div>' +
@@ -1037,7 +1254,7 @@
       '</div>';
     } else if (t.wallpaper === "video") {
       const prev = t.wallpaperVideo
-        ? '<video src="' + esc(t.wallpaperVideo) + '" autoplay loop muted playsinline></video>'
+        ? '<video src="' + esc(getCachedMediaUrl(t.wallpaperVideo)) + '" autoplay loop muted playsinline></video>'
         : '<div class="avatar-placeholder">No Video</div>';
       mediaBlock = '<div class="upload-block" style="margin-top:16px">' +
         '<span class="fl-label">Wallpaper Video & Auto-Theme</span>' +
@@ -1046,7 +1263,7 @@
           '<div class="upload-controls">' +
             '<input type="file" id="wallpaperVideoUpload" accept="video/*"/>' +
             '<span class="fl-hint">Upload a video loop (or paste URL): website colors will auto-adapt!</span>' +
-            '<input type="text" id="wallpaperVideoUrl" placeholder="https://… / video URL or path" value="' + esc(t.wallpaperVideo || "") + '"/>' +
+            '<input type="text" id="wallpaperVideoUrl" placeholder="https://… / video URL or path" value="' + (t.wallpaperVideo && t.wallpaperVideo.startsWith("data:") ? "[Uploaded local video]" : esc(t.wallpaperVideo || "")) + '" data-is-base64="' + (t.wallpaperVideo && t.wallpaperVideo.startsWith("data:") ? "1" : "0") + '"/>' +
             '<button type="button" class="btn btn-ghost btn-sm" id="extractVideoColorsBtn">🎨 Re-extract palette from video</button>' +
             (t.wallpaperVideo ? '<button type="button" class="mini-btn danger" id="wallpaperClear">Clear wallpaper</button>' : "") +
           '</div>' +
@@ -1112,8 +1329,17 @@
       '<div class="form-grid two-col">' +
         fieldRow("Left Text", tInput(["theme", "footer", "left"])) +
         fieldRow("Right Text (e.g. ©)", tInput(["theme", "footer", "right"])) +
-        fieldRow("Footer Background Color", hexTextInput(["theme", "footer", "bg"])) +
-      '</div>'
+      '</div>' +
+      fieldRow("Footer Background Color Palette", colorPalettePicker(["theme", "footer", "bg"], "Footer Background Color", [
+        { name: "Default (Theme)", value: "" },
+        { name: "Transparent", value: "transparent" },
+        { name: "Dark Midnight", value: "#0B0F19" },
+        { name: "Deep Slate", value: "#0F172A" },
+        { name: "Charcoal Dark", value: "#1B1B1B" },
+        { name: "Ocean Teal", value: "#0F86A1" },
+        { name: "Amber Cream", value: "#EBC7B5" },
+        { name: "Soft White", value: "#FFFFFF" }
+      ]), "Select a visual color swatch or custom color for the footer background.")
     );
     return footerCard + styleBlock("footer");
   }
@@ -1196,12 +1422,16 @@
     $$("#editorContent [data-bind]").forEach(inp => {
       const p = inp.dataset.bind;
       if (!p) return;
+      if (inp.classList.contains("palette-native-color")) return;
       const tokens = parsePath(p);
       if (tokens[0] === "about" && tokens.length === 1) {
         state.about = inp.value.split("\n").map(s => s.trim()).filter(Boolean);
         return;
       }
       let val = inp.value;
+      if (inp.dataset.isBase64 === "1" && (val.startsWith("[Uploaded") || !val.trim())) {
+        return;
+      }
       if (inp.type === "checkbox") val = inp.checked;
       else if (inp.type === "range" || inp.type === "number") val = Number(val);
       setPath(tokens, val);
@@ -1212,15 +1442,15 @@
     const aboutTa = document.getElementById("aboutTa");
     if (aboutTa) state.about = aboutTa.value.split("\n").map(s => s.trim()).filter(Boolean);
     const avatarUrl = document.getElementById("avatarUrl");
-    if (avatarUrl) state.owner.avatar = avatarUrl.value.trim();
+    if (avatarUrl && !avatarUrl.value.startsWith("[Uploaded")) state.owner.avatar = avatarUrl.value.trim();
     const logoUrl = document.getElementById("logoUrl");
-    if (logoUrl) state.owner.logo = logoUrl.value.trim();
+    if (logoUrl && !logoUrl.value.startsWith("[Uploaded")) state.owner.logo = logoUrl.value.trim();
     const heroMediaUrl = document.getElementById("heroMediaUrl");
-    if (heroMediaUrl) state.owner.heroMedia = heroMediaUrl.value.trim();
+    if (heroMediaUrl && !heroMediaUrl.value.startsWith("[Uploaded")) state.owner.heroMedia = heroMediaUrl.value.trim();
     const wpImgUrl = document.getElementById("wallpaperImageUrl");
-    if (wpImgUrl) state.theme.wallpaperImage = wpImgUrl.value.trim();
+    if (wpImgUrl && !wpImgUrl.value.startsWith("[Uploaded")) state.theme.wallpaperImage = wpImgUrl.value.trim();
     const wpVidUrl = document.getElementById("wallpaperVideoUrl");
-    if (wpVidUrl) state.theme.wallpaperVideo = wpVidUrl.value.trim();
+    if (wpVidUrl && !wpVidUrl.value.startsWith("[Uploaded")) state.theme.wallpaperVideo = wpVidUrl.value.trim();
   }
 
   /* ---------- auth ---------- */
@@ -1333,6 +1563,8 @@
     const content = document.getElementById("editorContent");
     content.addEventListener("click", handleListAction);
     content.addEventListener("click", handleIconPick);
+    content.addEventListener("click", handlePaletteClick);
+    content.addEventListener("input", handlePaletteNativeInput);
     content.addEventListener("change", handleRowFile);
     content.addEventListener("input", e => {
       if (e.target.matches("[data-bind], .icon-emoji, #avatarUrl, #aboutTa, #logoUrl, #heroMediaUrl")) markChanged();
@@ -1340,10 +1572,13 @@
     content.addEventListener("change", e => {
       if (e.target.matches("[data-bind]")) {
         markChanged();
-        if (e.target.dataset.bind === "theme.wallpaper" || e.target.dataset.bind.startsWith("theme.")) {
+        if (e.target.dataset.bind === "theme.wallpaper") {
           syncBind();
           applyTheme();
           renderSection(curTab);
+        } else if (e.target.dataset.bind.startsWith("theme.")) {
+          syncBind();
+          applyTheme();
         }
       }
     });
