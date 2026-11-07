@@ -40,7 +40,7 @@
   function avatarMarkup() {
     const av = D.owner.avatar;
     if (av) {
-      return '<div class="avatar"><img src="' + esc(av) + '" alt="' + esc(D.owner.name) + '" loading="lazy"/></div>';
+      return '<div class="avatar"><img src="' + esc(av) + '" alt="' + esc(D.owner.name) + '" loading="lazy" decoding="async"/></div>';
     }
     const initials = (D.owner.name || "AS").split(/\s+/).map(w => w[0]).slice(0, 2).join("").toUpperCase();
     return '<div class="avatar avatar-mono-wrap" aria-hidden="true"><div class="avatar-mono">' + esc(initials) + "</div></div>";
@@ -390,7 +390,7 @@
     if (extra) {
       extra.innerHTML = (D.aboutExtra || []).map(x =>
         '<div class="extra-card" data-reveal>' +
-          '<span class="extra-icon">' + renderIcon(x.icon, 22) + "</span>" +
+          '<span class="extra-icon" aria-hidden="true">' + renderIcon(x.icon, 22) + "</span>" +
           '<div><h4>' + esc(x.title) + "</h4><p>" + esc(x.text) + "</p></div>" +
         "</div>"
       ).join("");
@@ -417,7 +417,7 @@
     if (!el) return;
     el.innerHTML = (D.achievements || []).map((a, i) => {
       const logo = a.logo
-        ? '<div class="ach-logo"><img src="' + esc(a.logo) + '" alt="" loading="lazy"/></div>'
+        ? '<div class="ach-logo"><img src="' + esc(a.logo) + '" alt="" loading="lazy" decoding="async"/></div>'
         : '<div class="ach-logo ach-logo-icon">' + renderIcon("star", 26) + "</div>";
       const btnLabel = a.btnText || "View certificate ↗";
       const view = a.cert
@@ -436,7 +436,7 @@
     if (!el) return;
     el.innerHTML = (D.projects || []).map(p => {
       const img = p.image
-        ? '<div class="proj-img"><img src="' + esc(p.image) + '" alt="' + esc(p.title) + '" loading="lazy"/></div>'
+        ? '<div class="proj-img"><img src="' + esc(p.image) + '" alt="' + esc(p.title) + '" loading="lazy" decoding="async"/></div>'
         : '<div class="proj-img proj-img-ph">' + renderIcon("cube", 34) + "</div>";
       const btnLabel = p.btnText || "Visit ↗";
       const visit = p.link && p.link !== "#"
@@ -529,6 +529,26 @@
 
   /* ---------- reveal ---------- */
   let revealObserver = null;
+  let revealScrollScheduled = false;
+
+  function scheduleRevealCheck() {
+    if (revealScrollScheduled) return;
+    revealScrollScheduled = true;
+    requestAnimationFrame(() => {
+      revealScrollScheduled = false;
+      const unrevealed = Array.from(document.querySelectorAll("[data-reveal]:not(.in)"));
+      if (!unrevealed.length) return;
+      const vh = window.innerHeight;
+      unrevealed.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top < vh + 250 && rect.bottom > -250) {
+          el.classList.add("in");
+          if (revealObserver) revealObserver.unobserve(el);
+        }
+      });
+    });
+  }
+
   function initReveal() {
     const unrevealed = Array.from(document.querySelectorAll("[data-reveal]:not(.in)"));
     if (reduceMotion.matches || !("IntersectionObserver" in window)) {
@@ -553,8 +573,8 @@
         });
       }, { threshold: 0.01, rootMargin: "250px 0px 250px 0px" });
 
-      window.addEventListener("scroll", initReveal, { passive: true });
-      window.addEventListener("resize", initReveal, { passive: true });
+      window.addEventListener("scroll", scheduleRevealCheck, { passive: true });
+      window.addEventListener("resize", scheduleRevealCheck, { passive: true });
     }
     unrevealed.forEach(el => {
       const rect = el.getBoundingClientRect();
@@ -575,12 +595,23 @@
     const toggle = document.getElementById("menuToggle");
     const nav = document.getElementById("navLinks");
     if (!toggle || !nav) return;
+    toggle.setAttribute("aria-controls", "navLinks");
     toggle.addEventListener("click", () => {
       const open = nav.classList.toggle("open");
       toggle.setAttribute("aria-expanded", open ? "true" : "false");
     });
     nav.addEventListener("click", e => {
-      if (e.target.closest("a")) { nav.classList.remove("open"); toggle.setAttribute("aria-expanded", "false"); }
+      if (e.target.closest("a")) {
+        nav.classList.remove("open");
+        toggle.setAttribute("aria-expanded", "false");
+      }
+    });
+    window.addEventListener("keydown", e => {
+      if (e.key === "Escape" && nav.classList.contains("open")) {
+        nav.classList.remove("open");
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.focus();
+      }
     });
   }
 

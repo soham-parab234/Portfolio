@@ -48,6 +48,7 @@
   </script>
 </head>
 <body>
+  <a href="#top" class="skip-link sr-only">Skip to main content</a>
 
   <!-- ================= ADAPTIVE LOADING SCREEN ================= -->
   <div id="loadingScreen" class="loading-screen" aria-live="polite">
@@ -114,7 +115,7 @@
       </a>
     </div>
 
-    <nav class="nav-links" id="navLinks">
+    <nav class="nav-links" id="navLinks" aria-label="Main Navigation">
       <a href="#about">About</a>
       <a href="#skills">Skills</a>
       <a href="#achievements">Achievements</a>
@@ -123,7 +124,7 @@
       <a href="#contact">Contact</a>
     </nav>
 
-    <button class="menu-toggle" id="menuToggle" aria-label="Menu" aria-expanded="false">☰</button>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle Navigation Menu" aria-expanded="false" aria-controls="navLinks">☰</button>
   </header>
 
   <!-- ================= MAIN ================= -->
@@ -263,7 +264,7 @@
   <!-- certificate lightbox -->
   <div id="lightbox" class="lightbox">
     <button id="lb-close" class="lb-close" aria-label="Close">✕</button>
-    <img id="lb-img" alt="Certificate" />
+    <img id="lb-img" alt="Certificate" decoding="async" />
   </div>
 
   <!-- SECRET OWNER GATE -->
@@ -271,15 +272,16 @@
     <div class="lock-card">
       <button id="lockClose" class="lock-close" aria-label="Close">✕</button>
       <div class="lock-glyph">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 10V7a4 4 0 0 1 8 0v3M6 10h12v10H6z"/><circle cx="12" cy="15" r="1.6"/></svg>
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" focusable="false"><path d="M8 10V7a4 4 0 0 1 8 0v3M6 10h12v10H6z"/><circle cx="12" cy="15" r="1.6"/></svg>
       </div>
       <h3 id="lockHead">Owner Access Only</h3>
       <p class="lock-sub">This area is for the site owner. Tap top logo 5 times to return.</p>
       <form id="lockForm" class="lock-form">
         <div class="pass-wrap">
+          <label for="lockPass" class="sr-only">Passcode</label>
           <input id="lockPass" type="password" autocomplete="off" placeholder="Passcode" />
           <button type="button" class="pass-toggle" id="lockPassToggle" aria-label="Toggle password visibility">
-            <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
         <div id="lockMsg" class="lock-msg"></div>
